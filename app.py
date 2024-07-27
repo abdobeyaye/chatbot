@@ -8,7 +8,7 @@ app = Flask(__name__)
 socketio = SocketIO(app)
 
 # Configure API key
-api_key = "AIzaSyA105E6F2HVXLeGzJOJRGTarYPxd_Jdx9w"  # Replace with your API key
+api_key = "AIzaSyAja90YtHlKSSkK6Ih5bgq8Cj2K7zeh5CY"  # Replace with your API key
 genai.configure(api_key=api_key)
 model = genai.GenerativeModel('gemini-1.5-pro')
 chat = model.start_chat(history=[])
