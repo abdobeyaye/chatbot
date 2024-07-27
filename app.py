@@ -1,15 +1,11 @@
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from flask import Flask, render_template
+from flask_socketio import SocketIO, emit
 import os
 import google.generativeai as genai
 import docx
 
-app = FastAPI()
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+app = Flask(__name__)
+socketio = SocketIO(app)
 
 # Configure API key
 api_key = "AIzaSyA105E6F2HVXLeGzJOJRGTarYPxd_Jdx9w"  # Replace with your API key
@@ -42,19 +38,16 @@ Answer:"""
     except Exception as e:
         return f"An error occurred: {str(e)}"
 
-class Message(BaseModel):
-    message: str
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+@socketio.on('send_message')
+def handle_send_message(data):
+    if 'message' in data:
+        question = data['message']
+        answer = answer_question(question, context)
+        emit('receive_message', {'message': answer})
 
-@app.post("/send_message/")
-async def handle_send_message(msg: Message):
-    question = msg.message
-    answer = answer_question(question, context)
-    return {"message": answer}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+if __name__ == '__main__':
+    socketio.run(app, debug=True)

@@ -199,40 +199,35 @@
     </div>
 
     <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
-<script>
-    document.getElementById('send-message').addEventListener('click', async () => {
-        const textInput = document.getElementById('text-input');
-        const message = textInput.value.trim();
-        const chatBody = document.getElementById('chat-body');
+    <script>
+        const socket = io();
 
-        if (message) {
-            // Send the message to the FastAPI server
-            const response = await fetch('/send_message/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ message: message })
-            });
-            const data = await response.json();
+        document.getElementById('send-message').addEventListener('click', () => {
+            const textInput = document.getElementById('text-input');
+            const message = textInput.value.trim();
+            const chatBody = document.getElementById('chat-body');
 
-            // Append user's message to chat body
-            const userMessage = document.createElement('p');
-            userMessage.textContent = message;
-            userMessage.classList.add('user');
-            chatBody.appendChild(userMessage);
+            if (message) {
+                socket.emit('send_message', { message: message });
+                const userMessage = document.createElement('p');
+                userMessage.textContent = message;
+                userMessage.classList.add('user');
+                chatBody.appendChild(userMessage);
+            }
 
-            // Append bot's response to chat body
+            textInput.value = '';
+            chatBody.scrollTop = chatBody.scrollHeight;
+        });
+
+        socket.on('receive_message', (data) => {
+            const chatBody = document.getElementById('chat-body');
             const botMessage = document.createElement('p');
             botMessage.textContent = data.message;
             botMessage.classList.add('bot');
             chatBody.appendChild(botMessage);
-        }
 
-        textInput.value = '';
-        chatBody.scrollTop = chatBody.scrollHeight;
-    });
-</script>
-
+            chatBody.scrollTop = chatBody.scrollHeight;
+        });
+    </script>
 </body>
 </html>
