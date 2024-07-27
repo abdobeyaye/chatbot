@@ -6,3 +6,7 @@ flask-socketio
 eventlet
 google-generativeai
 python-docx
+google-api-core
+google-auth
+docx
+
