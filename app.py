@@ -4,10 +4,15 @@ import os
 import google.generativeai as genai
 import docx
 import time
+import logging
 from google.api_core.exceptions import ResourceExhausted
 
 app = Flask(__name__)
 socketio = SocketIO(app)
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Configure API key
 api_key = os.getenv('GOOGLE_API_KEY')  # Use environment variable for API key
@@ -28,7 +33,7 @@ context = read_docx(context_file_path)
 # Function to answer question based on context
 def answer_question(question, context):
     retry_count = 0
-    max_retries = 5
+    max_retries = 3  # Reduced the number of retries
     retry_delay = 2  # seconds
 
     while retry_count < max_retries:
@@ -44,9 +49,13 @@ Answer:"""
             return response.text
         except ResourceExhausted:
             retry_count += 1
-            print(f"Quota exceeded. Retrying {retry_count}/{max_retries}...")
+            logger.warning(f"Quota exceeded. Retrying {retry_count}/{max_retries}...")
             time.sleep(retry_delay)
+        except Exception as e:
+            logger.error(f"An unexpected error occurred: {e}")
+            return "An error occurred while processing your request. Please try again later."
     
+    logger.error("Resource has been exhausted after retries.")
     return "An error occurred: Resource has been exhausted. Please try again later."
 
 @app.route('/')
