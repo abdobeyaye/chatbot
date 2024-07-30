@@ -5,9 +5,6 @@ import docx
 import time
 import logging
 from groq import Groq
-from dotenv import load_dotenv
-
-load_dotenv()
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -49,7 +46,7 @@ Answer:"""
                 messages=[{"role": "user", "content": prompt}],
                 model="llama-3.1-8b-instant"
             )
-            return response.choices[0].message['content']
+            return response.choices[0].message.content
         except Exception as e:
             logger.warning(f"Error: {e}. Retrying {retry_count}/{max_retries}...")
             time.sleep(retry_delay)
