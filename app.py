@@ -1,11 +1,10 @@
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 import os
-import google.generativeai as genai
 import docx
 import time
 import logging
-from google.api_core.exceptions import ResourceExhausted
+from groq import Groq
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -14,26 +13,24 @@ socketio = SocketIO(app)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configure API key
-api_key = os.getenv('GOOGLE_API_KEY')  # Use environment variable for API key
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-1.5-pro')
-chat = model.start_chat(history=[])
+# Configure Groq API key
+api_key = os.getenv('GROQ_API_KEY')  # Use environment variable for API key
+groq_client = Groq(api_key=api_key)
 
 # Function to read docx file
 def read_docx(file_path):
     doc = docx.Document(file_path)
-    full_text = [para.text for para in doc.paragraphs]
+    full_text = [para.text for para in doc.paragraphs if para.text]
     return '\n'.join(full_text)
 
 # Prepare context from document
 context_file_path = 'static/document.docx'
 context = read_docx(context_file_path)
 
-# Function to answer question based on context
+# Function to answer question based on context using Groq API
 def answer_question(question, context):
     retry_count = 0
-    max_retries = 3  # Reduced the number of retries
+    max_retries = 3
     retry_delay = 2  # seconds
 
     while retry_count < max_retries:
@@ -45,18 +42,18 @@ Question: {question}
 Please provide a concise and accurate answer based on the given context. If the information is not available in the context, respond with "I'm sorry, I don't have enough information to answer that question."
 
 Answer:"""
-            response = chat.send_message(prompt)
-            return response.text
-        except ResourceExhausted:
-            retry_count += 1
-            logger.warning(f"Quota exceeded. Retrying {retry_count}/{max_retries}...")
-            time.sleep(retry_delay)
+            response = groq_client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama-3.1-8b-instant"
+            )
+            return response.choices[0].message.content
         except Exception as e:
-            logger.error(f"An unexpected error occurred: {e}")
-            return "An error occurred while processing your request. Please try again later."
+            logger.warning(f"Error: {e}. Retrying {retry_count}/{max_retries}...")
+            time.sleep(retry_delay)
+            retry_count += 1
     
-    logger.error("Resource has been exhausted after retries.")
-    return "An error occurred: Resource has been exhausted. Please try again later."
+    logger.error("Failed to get a response after multiple retries.")
+    return "An error occurred: Unable to process your request. Please try again later."
 
 @app.route('/')
 def index():
