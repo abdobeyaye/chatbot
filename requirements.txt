@@ -4,8 +4,5 @@ gunicorn
 Werkzeug>=2.2.0
 flask-socketio
 eventlet
-google-generativeai
+groq  # Added for Groq API client
 python-docx
-google-api-core
-google-auth
-
