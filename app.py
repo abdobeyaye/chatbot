@@ -6,7 +6,7 @@ import time
 import logging
 from groq import Groq
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='Templates')
 socketio = SocketIO(app)
 
 # Configure logging
