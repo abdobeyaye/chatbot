@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 import os
 import docx
@@ -7,6 +7,7 @@ import logging
 from groq import Groq
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app)
 
 # Configure logging
@@ -25,35 +26,30 @@ def read_docx(file_path):
 
 # Prepare context from document
 context_file_path = 'static/document.docx'
-context = read_docx(context_file_path)
+doc_text = read_docx(context_file_path)
 
-# Function to answer question based on context using Groq API
-def answer_question(question, context):
-    retry_count = 0
-    max_retries = 3
-    retry_delay = 2  # seconds
+# Function to retrieve context based on query
+def simple_retrieve(query, text, n=500):
+    start_index = text.lower().find(query.lower())
+    if start_index == -1:
+        return "No relevant information found."
+    end_index = start_index + n
+    return text[start_index:end_index]
 
-    while retry_count < max_retries:
-        try:
-            prompt = f"""Context: {context}
-
-Question: {question}
-
-Please provide a concise and accurate answer based on the given context. If the information is not available in the context, respond with "I'm sorry, I don't have enough information to answer that question."
-
-Answer:"""
-            response = groq_client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama-3.1-8b-instant"
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            logger.warning(f"Error: {e}. Retrying {retry_count}/{max_retries}...")
-            time.sleep(retry_delay)
-            retry_count += 1
-    
-    logger.error("Failed to get a response after multiple retries.")
-    return "An error occurred: Unable to process your request. Please try again later."
+# Function to generate response using Groq API
+def generate_response(context, question):
+    prompt = f"Based on the following context: {context}\nAnswer the question: {question}"
+    try:
+        response = groq_client.chat.completions.create(
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            model="llama-3.1-8b-instant",
+            timeout=10
+        )
+        return response.choices[0].message.content
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 @app.route('/')
 def index():
@@ -63,7 +59,8 @@ def index():
 def handle_send_message(data):
     if 'message' in data:
         question = data['message']
-        answer = answer_question(question, context)
+        context = simple_retrieve(question, doc_text)
+        answer = generate_response(context, question)
         emit('receive_message', {'message': answer})
 
 if __name__ == '__main__':
