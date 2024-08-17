@@ -1,3 +1,4 @@
+import os
 import torch
 from diffusers import FluxPipeline
 from flask import Flask, request, jsonify, send_file, render_template
@@ -44,4 +45,6 @@ def generate_image():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    # استخدام البورت الذي توفره Render أو البورت 8080 افتراضيًا
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
